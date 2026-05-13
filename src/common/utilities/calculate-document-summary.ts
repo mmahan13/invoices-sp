@@ -1,6 +1,7 @@
-import { Invoice } from '../entities/invoice.entity';
+// calculate-document-summary.ts
 
-export interface IInvoiceItem {
+// 1. Interfaz genérica para cualquier línea que tenga precios e impuestos
+export interface IDocumentItem {
   quantity: number;
   priceAtTime: number;
   ivaAtTime: number;
@@ -15,7 +16,8 @@ export interface TaxBreakdown {
   reRate: number;
 }
 
-export interface InvoiceSummary {
+// 2. Resumen genérico
+export interface DocumentSummary {
   baseImponibleTotal: number;
   ivaTotal: number;
   reTotal: number;
@@ -23,14 +25,14 @@ export interface InvoiceSummary {
   taxGroups: TaxBreakdown[];
 }
 
-export type InvoiceWithSummary = Invoice & { summary: InvoiceSummary };
-
-export function calculateInvoiceSummary(items: IInvoiceItem[]): InvoiceSummary {
+// 3. Función genérica
+export function calculateDocumentSummary(
+  items: IDocumentItem[],
+): DocumentSummary {
   let baseImponibleTotal = 0;
   let ivaTotal = 0;
   let reTotal = 0;
 
-  // Agruparemos los impuestos por tipo (ej: agrupar todo lo que sea 10%+1.4%)
   const groups: Record<string, TaxBreakdown> = {};
 
   items.forEach((item) => {
@@ -39,17 +41,14 @@ export function calculateInvoiceSummary(items: IInvoiceItem[]): InvoiceSummary {
     const ivaRate = Number(item.ivaAtTime);
     const reRate = Number(item.surchargeAtTime || 0);
 
-    // Cálculos de la línea
     const baseLinea = price * qty;
     const cuotaIva = baseLinea * (ivaRate / 100);
     const cuotaRe = baseLinea * (reRate / 100);
 
-    // Sumatorios generales
     baseImponibleTotal += baseLinea;
     ivaTotal += cuotaIva;
     reTotal += cuotaRe;
 
-    // Agrupación para el pie de factura
     const key = `${ivaRate}-${reRate}`;
     if (!groups[key]) {
       groups[key] = {
@@ -66,7 +65,6 @@ export function calculateInvoiceSummary(items: IInvoiceItem[]): InvoiceSummary {
     groups[key].re += cuotaRe;
   });
 
-  // Devolvemos todo redondeado a 2 decimales para evitar problemas de céntimos
   return {
     baseImponibleTotal: Number(baseImponibleTotal.toFixed(2)),
     ivaTotal: Number(ivaTotal.toFixed(2)),
