@@ -39,6 +39,15 @@ export class ClientsController {
     return this.clientsService.findOne(id, user);
   }
 
+  //@Auth(UserRole.ADMIN)
+  @Get(':id/detail')
+  findOneByClient(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: User,
+  ) {
+    return this.clientsService.findOneByClientDetail(id, user);
+  }
+
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
