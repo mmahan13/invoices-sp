@@ -83,19 +83,19 @@ export class InvoicesService {
 
   // Listar todas las facturas del usuario (ordenadas de más nueva a más vieja)
   async findAll(user: User, yearDto?: YearDto): Promise<Invoice[]> {
-    // Si yearDto no existe o yearDto.year es undefined, usamos el año actual.
     const filterYear = yearDto?.year ?? new Date().getFullYear();
 
-    const invoices = await this.invoiceRepository.find({
-      where: {
-        user: { id: user.id },
-        year: filterYear, // Ahora filterYear es siempre un 'number'
-      },
-      relations: ['order', 'order.client'],
-      order: { issueDate: 'DESC' },
-    });
-
-    return invoices;
+    return await this.invoiceRepository
+      .createQueryBuilder('invoice')
+      // Usamos innerJoinAndSelect para filtrar y cargar al mismo tiempo
+      .innerJoinAndSelect('invoice.order', 'order')
+      // Al usar innerJoin aquí, si el cliente está soft-deleted,
+      // TypeORM no lo encontrará y la factura completa se excluirá del resultado.
+      .innerJoinAndSelect('order.client', 'client')
+      .where('invoice.user_id = :userId', { userId: user.id })
+      .andWhere('invoice.year = :year', { year: filterYear })
+      .orderBy('invoice.issueDate', 'DESC')
+      .getMany();
   }
 
   async getAvailableYears(user: User): Promise<number[]> {

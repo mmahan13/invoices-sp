@@ -163,18 +163,20 @@ export class OrdersService {
       totalLinea: totalLinea,
     };
   }
+
   async findAll(user: User, yearDto?: YearDto): Promise<Order[]> {
-    // Si yearDto no existe o yearDto.year es undefined, usamos el año actual.
     const filterYear = yearDto?.year ?? new Date().getFullYear();
 
-    const orders = await this.orderRepository.find({
-      where: {
-        user: { id: user.id },
-        year: filterYear, // Ahora filterYear es siempre un 'number'
-      },
-      relations: ['client'],
-      order: { createdAt: 'DESC' },
-    });
+    // Cambiamos find() por createQueryBuilder
+    const orders = await this.orderRepository
+      .createQueryBuilder('order')
+      // El INNER JOIN es la clave: si el cliente está "borrado",
+      // la orden entera se descarta de los resultados.
+      .innerJoinAndSelect('order.client', 'client')
+      .where('order.user_id = :userId', { userId: user.id })
+      .andWhere('order.year = :year', { year: filterYear })
+      .orderBy('order.createdAt', 'DESC')
+      .getMany();
 
     return orders;
   }
