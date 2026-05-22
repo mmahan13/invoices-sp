@@ -9,6 +9,8 @@ import {
   ParseUUIDPipe,
   ClassSerializerInterceptor,
   UseInterceptors,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -58,7 +60,11 @@ export class ClientsController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string, @GetUser() user: User) {
+  @HttpCode(HttpStatus.NO_CONTENT) // Esto forzará el 204
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: User,
+  ): Promise<void> {
     return this.clientsService.remove(id, user);
   }
 }

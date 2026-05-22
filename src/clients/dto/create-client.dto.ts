@@ -11,6 +11,9 @@ import {
 export class CreateClientDto {
   @IsString()
   @IsNotEmpty({ message: 'La razón social o nombre es obligatorio' })
+  @MinLength(3, {
+    message: 'La razón social debe tener un mínimo de 4 caracteres',
+  })
   @MaxLength(150, {
     message: 'La razón social no puede tener más de 150 caracteres',
   })
@@ -29,6 +32,10 @@ export class CreateClientDto {
 
   @IsString()
   @IsOptional()
+  @MinLength(5, { message: 'La dirección debe tener minimo 5 caracteres' })
+  @MaxLength(200, {
+    message: 'La dirección no puede tener más de 200 caracteres',
+  })
   address?: string;
 
   @IsEmail({}, { message: 'El formato del email no es válido' })
