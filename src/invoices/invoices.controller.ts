@@ -95,7 +95,7 @@ export class InvoicesController {
     }
   }
 
-  /* @Get('reports/taxes/sales/:year')
+  @Get('reports/taxes/sales/:year')
   @Auth() // Protegido con JWT
   async getSalesTaxReport(
     @Param('year', ParseIntPipe) year: number,
@@ -114,7 +114,7 @@ export class InvoicesController {
         'Error al generar el informe de impuestos',
       );
     }
-  } */
+  }
 
   @Get('reports/traceability/data/:year')
   @Auth()

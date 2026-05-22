@@ -138,9 +138,7 @@ export class InvoicesService {
     };
   }
 
-  /*  async getSalesTaxReport(year: number, user: User) {
-    // 2. CREAMOS LAS FECHAS BASADAS EN LA HORA DE MADRID (No en UTC crudo)
-    // Así el 1 de enero a las 00:00 de España será exacto.
+  async getSalesTaxReport(year: number, user: User) {
     const startDate = dayjs.tz(`${year}-01-01 00:00:00`, TZ_SPAIN).toDate();
     const endDate = dayjs.tz(`${year}-12-31 23:59:59`, TZ_SPAIN).toDate();
 
@@ -149,7 +147,8 @@ export class InvoicesService {
         user: { id: user.id },
         issueDate: Between(startDate, endDate),
       },
-      relations: ['order', 'order.items'],
+      // CORRECCIÓN 1: Cargamos el cliente para poder validar su estado de RE
+      relations: ['order', 'order.items', 'order.client'],
     });
 
     const createEmptyQuarter = () => ({
@@ -176,9 +175,6 @@ export class InvoicesService {
     };
 
     for (const invoice of invoices) {
-      // 3. EXTRAEMOS EL MES CONVIRTIENDO LA FECHA A HORA DE MADRID
-      // Ahora, si la BD dice 31 de marzo a las 23:00 UTC, dayjs lo convertirá
-      // a 1 de abril 01:00 AM Madrid, y el .month() devolverá Abril (el correcto).
       const month = dayjs(invoice.issueDate).tz(TZ_SPAIN).month();
       const quarter = Math.floor(month / 3) + 1;
       const qKey = `${quarter}T` as '1T' | '2T' | '3T' | '4T';
@@ -186,17 +182,27 @@ export class InvoicesService {
       for (const item of invoice.order.items) {
         const qty = Number(item.quantity);
         const price = Number(item.priceAtTime);
-        let taxRate = Number(item.taxAtTime || 0);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        let reRate = Number((item as any).reAtTime || 0);
 
-        if (taxRate === 11.4 && reRate === 0) {
+        // CORRECCIÓN 2: Usar los nombres reales de tu Entidad
+        let taxRate = Number(item.ivaAtTime || 0);
+        let reRate = Number(item.surchargeAtTime || 0);
+
+        // CORRECCIÓN 3: "Seguro de vida". Si el item no tiene RE pero el cliente sí,
+        // calculamos el porcentaje que le correspondería según el IVA.
+        if (reRate === 0 && invoice.order.client?.hasEquivalenceSurcharge) {
+          if (taxRate === 10) reRate = 1.4;
+          else if (taxRate === 21) reRate = 5.2;
+          else if (taxRate === 4) reRate = 0.5;
+        }
+
+        // Tu lógica de limpieza de tipos (11.4 -> 10 + 1.4)
+        if (taxRate === 11.4) {
           taxRate = 10;
           reRate = 1.4;
-        } else if (taxRate === 26.2 && reRate === 0) {
+        } else if (taxRate === 26.2) {
           taxRate = 21;
           reRate = 5.2;
-        } else if (taxRate === 4.5 && reRate === 0) {
+        } else if (taxRate === 4.5) {
           taxRate = 4;
           reRate = 0.5;
         }
@@ -210,10 +216,14 @@ export class InvoicesService {
           report[key].totBase += baseLinea;
           report[key].biT += baseLinea;
           report[key].totFactura += totalLinea;
+
+          // Sumamos el recargo a la columna correspondiente
           if (reRate > 0) {
             report[key].recargo += reLinea;
-            report[key].baseR += baseLinea;
+            report[key].baseR += baseLinea; // Base imponible afecta a Recargo
           }
+
+          // El total de IVA en España para el modelo 303 incluye IVA + RE
           report[key].totalIva += ivaLinea + reLinea;
 
           if (taxRate === 4) {
@@ -233,6 +243,7 @@ export class InvoicesService {
       }
     }
 
+    // Redondeo final a 2 decimales
     for (const key of Object.keys(report)) {
       const q = report[key as keyof typeof report];
       for (const prop of Object.keys(q)) {
@@ -244,7 +255,7 @@ export class InvoicesService {
 
     return report;
   }
- */
+
   async getTraceabilityData(year: number, user: User) {
     const startDate = dayjs.tz(`${year}-01-01 00:00:00`, TZ_SPAIN).toDate();
     const endDate = dayjs.tz(`${year}-12-31 23:59:59`, TZ_SPAIN).toDate();
