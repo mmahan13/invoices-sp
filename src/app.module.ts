@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { CompanyModule } from './company/company.module';
 import { SeedModule } from './seed/seed.module';
 import { OrdersItemsModule } from './orders-items/orders-items.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { OrdersItemsModule } from './orders-items/orders-items.module';
     CompanyModule,
     SeedModule,
     OrdersItemsModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [],
