@@ -55,39 +55,41 @@ export class InvoicesController {
   async getPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: User,
-    @Res() res: express.Response, // <--- Usamos el alias aquí
+    @Res() res: express.Response,
   ) {
     try {
-      // 1. Obtenemos la factura "vitaminada" (ya trae el summary)
-      // Tipamos explícitamente para que el linter sepa qué estamos pasando al PDF
+      // 1. Obtenemos la factura con su summary
       const invoice: InvoiceWithSummary = await this.invoicesService.findOne(
         id,
         user,
       );
 
-      // 2. Generamos el buffer
+      // 2. Generamos el buffer del PDF
       const buffer = await this.invoicePdfService.generatePdf(invoice);
 
-      // 3. Configuramos las cabeceras
-      // Es buena práctica usar nombres de archivo limpios (sin espacios raros)
-      const fileName = invoice.invoiceNumber
-        .replace(/[^a-z0-9]/gi, '_')
-        .toLowerCase();
+      // --- 3. CONFIGURAMOS EL NOMBRE DEL ARCHIVO ---
+      // Usamos la referencia (PR-2026-013) y el nombre del cliente
+      const reference = String(invoice.invoiceNumber || 'factura').replace(
+        /[^a-z0-9]/gi,
+        '_',
+      );
+      const clientName = invoice.order.client.businessName
+        .split(' ')[0] // Cogemos solo la primera palabra (ej: FRUTERIA)
+        .replace(/[^a-z0-9]/gi, '');
+
+      const fileName = `${reference}_${clientName}`.toUpperCase();
+      console.log(fileName);
 
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${fileName}.pdf"`,
+        'Content-Disposition': `attachment; filename="${fileName}.pdf"`, // Aquí se aplica el nombre
         'Content-Length': buffer.length,
       });
 
       // 4. Enviamos y cerramos
       res.end(buffer);
     } catch (error) {
-      // Si el error es un 404 (de findOne), lo dejamos pasar tal cual
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
+      if (error instanceof NotFoundException) throw error;
       console.error('PDF Generation Error:', error);
       throw new InternalServerErrorException(
         'Error interno al generar el documento PDF',

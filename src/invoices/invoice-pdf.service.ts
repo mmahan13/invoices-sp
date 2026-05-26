@@ -72,7 +72,7 @@ export class InvoicePdfService {
 
         // 4. Bloque de impuestos y totales
         if (currentY > 640) doc.addPage();
-        this.drawFooter(doc, invoice);
+        this.drawFooter(doc, invoice, currentY);
 
         doc.end();
       } catch (error: unknown) {
@@ -127,67 +127,75 @@ export class InvoicePdfService {
       .stroke();
   }
 
-  private drawFooter(doc: PDFKit.PDFDocument, inv: InvoiceWithSummary): void {
-    let summaryY = 680;
-    const hasRE = inv.summary.reTotal > 0;
-
-    doc
-      .moveTo(50, summaryY - 15)
-      .lineTo(550, summaryY - 15)
-      .stroke();
-    doc.font('Courier-Bold').fontSize(10);
-    doc.text('BASE IMP.', 50, summaryY, { width: 110, align: 'center' });
-    doc.text('% IVA', 170, summaryY, { width: 60, align: 'center' });
-    doc.text('CUOTA IVA', 240, summaryY, { width: 80, align: 'center' });
-
-    if (hasRE) {
-      doc.text('% R.E.', 330, summaryY, { width: 60, align: 'center' });
-      doc.text('CUOTA R.E.', 400, summaryY, { width: 80, align: 'center' });
+  private drawFooter(
+    doc: PDFKit.PDFDocument,
+    inv: InvoiceWithSummary,
+    currentY: number,
+  ): void {
+    // Si queda poco espacio al final, saltamos de página para el bloque de firmas/totales
+    let summaryY = currentY + 30;
+    if (summaryY > 650) {
+      doc.addPage();
+      summaryY = 50;
     }
 
-    doc
-      .moveTo(50, summaryY + 15)
-      .lineTo(550, summaryY + 15)
-      .stroke();
-    summaryY += 25;
+    const hasRE = inv.summary.reTotal > 0;
 
-    doc.font('Courier').fontSize(10);
+    // Línea separadora
+    doc
+      .moveTo(50, summaryY - 10)
+      .lineTo(550, summaryY - 10)
+      .stroke();
+
+    // Encabezados del desglose (Usa inv.summary directamente)
+    doc.font('Courier-Bold').fontSize(9);
+    doc.text('BASE IMPONIBLE', 50, summaryY, { width: 100, align: 'left' });
+    doc.text('IVA', 160, summaryY, { width: 50, align: 'center' });
+    doc.text('CUOTA IVA', 220, summaryY, { width: 80, align: 'right' });
+
+    if (hasRE) {
+      doc.text('RE', 310, summaryY, { width: 50, align: 'center' });
+      doc.text('CUOTA RE', 370, summaryY, { width: 80, align: 'right' });
+    }
+
+    summaryY += 15;
+
+    // Dibujamos los grupos que YA vienen calculados del backend
+    doc.font('Courier').fontSize(9);
     inv.summary.taxGroups.forEach((group) => {
       doc.text(`${group.base.toFixed(2)} €`, 50, summaryY, {
-        width: 110,
+        width: 100,
+        align: 'left',
+      });
+      doc.text(`${group.taxRate}%`, 160, summaryY, {
+        width: 50,
         align: 'center',
       });
-      doc.text(`${group.taxRate}%`, 170, summaryY, {
-        width: 60,
-        align: 'center',
-      });
-      doc.text(`${group.iva.toFixed(2)} €`, 240, summaryY, {
+      doc.text(`${group.iva.toFixed(2)} €`, 220, summaryY, {
         width: 80,
-        align: 'center',
+        align: 'right',
       });
 
       if (hasRE) {
-        doc.text(
-          `${group.reRate > 0 ? group.reRate + '%' : '-'}`,
-          330,
-          summaryY,
-          { width: 60, align: 'center' },
-        );
-        doc.text(
-          `${group.re > 0 ? group.re.toFixed(2) + ' €' : '-'}`,
-          400,
-          summaryY,
-          { width: 80, align: 'center' },
-        );
+        doc.text(`${group.reRate}%`, 310, summaryY, {
+          width: 50,
+          align: 'center',
+        });
+        doc.text(`${group.re.toFixed(2)} €`, 370, summaryY, {
+          width: 80,
+          align: 'right',
+        });
       }
-      summaryY += 15;
+      summaryY += 12;
     });
 
-    summaryY += 15;
-    doc.font('Helvetica-Bold').fontSize(14);
-    doc.text('TOTAL:', 200, summaryY, { width: 200, align: 'right' });
-    doc.text(`${inv.summary.totalFinal.toFixed(2)} €`, 420, summaryY, {
-      width: 130,
+    // TOTAL FINAL (El que manda)
+    summaryY += 20;
+    doc.rect(350, summaryY, 200, 40).fill('#f8fafc').stroke('#e2e8f0');
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(12);
+    doc.text('TOTAL FACTURA:', 360, summaryY + 12, { width: 100 });
+    doc.text(`${inv.summary.totalFinal.toFixed(2)} €`, 460, summaryY + 12, {
+      width: 80,
       align: 'right',
     });
   }
