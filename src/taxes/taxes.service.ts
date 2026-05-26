@@ -12,15 +12,25 @@ export class TaxesService {
     private readonly taxRepository: Repository<Tax>,
   ) {}
 
-  create(createTaxDto: CreateTaxDto) {
-    return 'This action adds a new tax';
+  async create(createTaxDto: CreateTaxDto) {
+    const tax = this.taxRepository.create(createTaxDto);
+    return await this.taxRepository.save(tax);
   }
 
-  // Devuelve todos los impuestos activos para el selector de productos
-  async findAll(): Promise<Tax[]> {
+  async toggleStatus(id: string) {
+    const tax = await this.taxRepository.findOneBy({ id });
+    if (!tax) throw new NotFoundException('Impuesto no encontrado');
+
+    tax.isActive = !tax.isActive;
+    return await this.taxRepository.save(tax);
+  }
+
+  async findAll(activeOnly: boolean = false): Promise<Tax[]> {
+    const whereCondition = activeOnly ? { isActive: true } : {};
+
     return await this.taxRepository.find({
-      where: { isActive: true },
-      order: { iva: 'ASC' }, // Los ordenamos de menor a mayor IVA
+      where: whereCondition, // Si activeOnly es false, el objeto es {}, trae TODO
+      order: { iva: 'ASC' },
     });
   }
 
@@ -39,6 +49,7 @@ export class TaxesService {
   }
 
   update(id: number, updateTaxDto: UpdateTaxDto) {
+    console.log(updateTaxDto);
     return `This action updates a #${id} tax`;
   }
 

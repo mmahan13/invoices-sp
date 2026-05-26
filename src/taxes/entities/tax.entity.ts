@@ -13,6 +13,7 @@ export class Tax {
   @Column('decimal', {
     precision: 5,
     scale: 2,
+    default: 0, // <--- Añadir esto por seguridad
     transformer: new ColumnNumericTransformer(),
   })
   iva: number; // Ej: 21.00
@@ -20,6 +21,7 @@ export class Tax {
   @Column('decimal', {
     precision: 5,
     scale: 2,
+    default: 0, // <--- Añadir esto por seguridad
     transformer: new ColumnNumericTransformer(),
   })
   surcharge: number; // El Recargo de Equivalencia. Ej: 5.20
