@@ -81,21 +81,45 @@ export class InvoicesService {
     return await queryRunner.manager.save(invoice);
   }
 
-  // Listar todas las facturas del usuario (ordenadas de más nueva a más vieja)
   async findAll(user: User, yearDto?: YearDto): Promise<Invoice[]> {
     const filterYear = yearDto?.year ?? new Date().getFullYear();
+    const quarter = yearDto?.quarter; // <-- Lo sacamos del DTO
 
-    return await this.invoiceRepository
+    const query = this.invoiceRepository
       .createQueryBuilder('invoice')
-      // Usamos innerJoinAndSelect para filtrar y cargar al mismo tiempo
       .innerJoinAndSelect('invoice.order', 'order')
-      // Al usar innerJoin aquí, si el cliente está soft-deleted,
-      // TypeORM no lo encontrará y la factura completa se excluirá del resultado.
       .innerJoinAndSelect('order.client', 'client')
       .where('invoice.user_id = :userId', { userId: user.id })
-      .andWhere('invoice.year = :year', { year: filterYear })
-      .orderBy('invoice.issueDate', 'DESC')
-      .getMany();
+      .andWhere('invoice.year = :year', { year: filterYear });
+
+    // Si viene el trimestre en el DTO, aplicamos el filtro de fechas
+    if (quarter) {
+      let startMonth = 0;
+      let endMonth = 2; // T1: Ene a Mar
+
+      if (quarter === 2) {
+        startMonth = 3;
+        endMonth = 5;
+      } // T2: Abr a Jun
+      if (quarter === 3) {
+        startMonth = 6;
+        endMonth = 8;
+      } // T3: Jul a Sep
+      if (quarter === 4) {
+        startMonth = 9;
+        endMonth = 11;
+      } // T4: Oct a Dic
+
+      const startDate = new Date(filterYear, startMonth, 1, 0, 0, 0);
+      const endDate = new Date(filterYear, endMonth + 1, 0, 23, 59, 59);
+
+      query.andWhere('invoice.issueDate BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    }
+
+    return await query.orderBy('invoice.issueDate', 'DESC').getMany();
   }
 
   async getAvailableYears(user: User): Promise<number[]> {
