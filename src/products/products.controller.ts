@@ -21,12 +21,12 @@ import { User } from 'src/auth/entities/user.entity';
 import { PaginatedResponse } from 'src/interfaces/paginate-response.model';
 
 @Controller('products')
-@Auth()
 @UseInterceptors(ClassSerializerInterceptor)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  @Auth()
   create(
     @Body() createProductDto: CreateProductDto,
     @GetUser() user: User,
@@ -35,6 +35,7 @@ export class ProductsController {
   }
 
   @Get()
+  @Auth()
   findAll(
     @Query() paginationDto: PaginationDto,
     @GetUser() user: User,
@@ -43,6 +44,7 @@ export class ProductsController {
   }
 
   @Get(':id')
+  @Auth()
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: User,
@@ -51,6 +53,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
+  @Auth()
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
@@ -60,6 +63,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @Auth()
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: User,
