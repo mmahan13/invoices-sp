@@ -31,6 +31,8 @@ export class OrdersService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Client)
     private readonly clientRepository: Repository<Client>,
+    @InjectRepository(Client)
+    private readonly orderItemRepository: Repository<OrderItem>,
 
     // Inyectamos el DataSource para manejar transacciones manuales
     private readonly dataSource: DataSource,
@@ -347,5 +349,86 @@ export class OrdersService {
     // Devolvemos solo la lista de los últimos 5 productos distintos comprados
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return Array.from(historyMap.values()).slice(0, 5);
+  }
+
+  async updateOrder(
+    id: string,
+    updateOrderDto: CreateOrderDto,
+    user: User,
+  ): Promise<Order> {
+    const { clientId, items } = updateOrderDto;
+
+    // 1. Validaciones previas (fuera de transacción)
+    const client = await this.validateClient(clientId, user.id);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 2. Buscamos el presupuesto existente
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id, user: { id: user.id } },
+        relations: ['items'],
+      });
+
+      if (!order) throw new NotFoundException(`Presupuesto no encontrado`);
+
+      // 3. El Candado: Solo editar si está en PENDING
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException(
+          'Solo se pueden editar presupuestos en estado PENDING',
+        );
+      }
+
+      // 4. Borramos las líneas antiguas
+      if (order.items && order.items.length > 0) {
+        await queryRunner.manager.remove(order.items);
+      }
+
+      let totalAmount = 0;
+      const orderItemsToInsert: OrderItem[] = [];
+
+      // 5. Procesamos las nuevas líneas usando tus métodos privados
+      for (const item of items) {
+        const product = await this.validateProduct(item.productId, user.id);
+
+        const lineDetails = this.calculateLineDetails(
+          product,
+          item.quantity,
+          item.price, // Precio que viene de Angular
+          client.hasEquivalenceSurcharge,
+        );
+
+        const orderItem = queryRunner.manager.create(OrderItem, {
+          quantity: item.quantity,
+          priceAtTime: lineDetails.priceAtTime,
+          ivaAtTime: lineDetails.ivaAtTime,
+          surchargeAtTime: lineDetails.surchargeAtTime,
+          product: product,
+          order: order, // Importante vincular a la cabecera
+        });
+
+        orderItemsToInsert.push(orderItem);
+        totalAmount += lineDetails.totalLinea;
+      }
+
+      // 6. Actualizamos la cabecera existente
+      order.client = client;
+      order.totalAmount = Number(totalAmount.toFixed(2));
+      order.items = orderItemsToInsert;
+      order.updatedBy = user.id;
+
+      // Guardamos todo (el cascade: true se encarga de los items)
+      const savedOrder = await queryRunner.manager.save(order);
+
+      await queryRunner.commitTransaction();
+      return savedOrder;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

@@ -69,6 +69,16 @@ export class OrdersController {
     return this.ordersService.updateStatus(id, updateOrderStatusDto, user);
   }
 
+  @Patch(':id')
+  @Auth()
+  updateOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateOrderDto: CreateOrderDto, // Reutilizamos el DTO de creación
+    @GetUser() user: User,
+  ): Promise<Order> {
+    return this.ordersService.updateOrder(id, updateOrderDto, user);
+  }
+
   @Get('client/:clientId/history')
   @Auth()
   getClientPriceHistory(@Param('clientId', ParseUUIDPipe) clientId: string) {
