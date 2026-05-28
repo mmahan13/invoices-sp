@@ -47,7 +47,7 @@ export class SeedService {
     // 1. Insertar Usuarios
     const users = await this.insertUsers();
     const manuelUser = users.find(
-      (u) => u.email === 'manuelfernandez@gmail.com',
+      (u) => u.email === 'mielfuentesburgos@gmail.com',
     );
 
     // 2. Insertar Empresa (vinculada a Manuel)
@@ -106,13 +106,21 @@ export class SeedService {
   }
 
   private async insertProducts(owner: User, taxes: Tax[]) {
-    const iva10 = taxes[1]; // IVA Reducido (10%)
+    // Buscamos el impuesto del 10%
+    const iva10 = taxes.find((tax) => tax.iva === 10 && tax.surcharge === 0);
 
-    // Mapeamos los productos base para inyectarles el usuario y el impuesto
+    if (!iva10) {
+      throw new Error(
+        'No se ha encontrado el impuesto del 10% en la base de datos',
+      );
+    }
+
+    // Mapeamos los productos
     const productsToInsert = SEED_PRODUCTS.map((product) => ({
       ...product,
       tax: iva10,
       user: owner,
+      createdBy: owner.id, // <-- ¡Añadimos esto para tu columna created_by!
     }));
 
     const products = this.productRepository.create(productsToInsert);

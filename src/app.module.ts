@@ -25,7 +25,13 @@ import { UsersModule } from './users/users.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       autoLoadEntities: true, //carga las entidades en la bd que se crean
-      synchronize: true, //Solo en dev en pro no se usa.
+      synchronize: process.env.DB_SYNCHRONIZE === 'true', //Solo en dev en pro no se usa.
+      ssl: true,
+      extra: {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      },
     }),
     ClientsModule,
     ProductsModule,

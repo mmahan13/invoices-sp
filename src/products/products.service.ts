@@ -99,7 +99,7 @@ export class ProductsService {
     paginationDto: PaginationDto,
     user: User,
   ): Promise<PaginatedResponse<Product>> {
-    const { page = 1, limit = 10 } = paginationDto;
+    const { page = 1, limit = 60 } = paginationDto;
     const skip = (page - 1) * limit;
 
     const [products, total] = await this.productRepository.findAndCount({
