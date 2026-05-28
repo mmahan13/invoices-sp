@@ -17,6 +17,8 @@ import {
   ClientDetailResponse,
   StatusLabelEnum,
 } from './models/client-detail-response.model';
+import { PaginatedResponse } from 'src/interfaces/paginate-response.model';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Injectable()
 export class ClientsService {
@@ -40,19 +42,42 @@ export class ClientsService {
     }
   }
 
-  async findAll(user: User): Promise<Client[]> {
+  async findAll(
+    paginationDto: PaginationDto,
+    user: User,
+  ): Promise<PaginatedResponse<Client>> {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    // Usamos getManyAndCount para obtener los datos y el total en una sola consulta
+    const [clients, total] = await this.clientRepository
+      .createQueryBuilder('client')
+      .where('client.user = :userId', { userId: user.id })
+      // Mantenemos tu lógica de conteo de facturas
+      .loadRelationCountAndMap('client.invoicesCount', 'client.invoices')
+      .orderBy('client.createdAt', 'DESC')
+      .skip(skip) // Cuántos registros saltar
+      .take(limit) // Cuántos registros traer
+      .getManyAndCount();
+
+    return {
+      data: clients,
+      meta: {
+        totalItems: total,
+        itemCount: clients.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    };
+  }
+
+  async findAllForSelector(user: User): Promise<Client[]> {
     return await this.clientRepository
       .createQueryBuilder('client')
-      // 1. Filtramos por el usuario logueado
       .where('client.user = :userId', { userId: user.id })
-
-      // 2. Esta es la magia: cuenta las facturas y las mete en 'invoicesCount'
-      // 'client.invoices' debe ser el nombre de la relación @OneToMany
       .loadRelationCountAndMap('client.invoicesCount', 'client.invoices')
-
-      // 3. Ordenamos como tenías antes
       .orderBy('client.createdAt', 'DESC')
-
       .getMany();
   }
 
