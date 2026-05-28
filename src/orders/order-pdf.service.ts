@@ -29,7 +29,6 @@ export class OrderPdfService {
           .text(order.client.businessName, 50, 170)
           .text(`NIF: ${order.client.taxId}`, 50, 185)
           .text(order.client.address, 50, 200);
-
         let currentY = 240;
         this.drawTableHeaders(doc, currentY);
         currentY += 25;
@@ -88,12 +87,16 @@ export class OrderPdfService {
   private drawHeader(d: PDFKit.PDFDocument, order: OrderWithSummary): void {
     // Si tienes los datos de la empresa en el payload del Order, cámbialo.
     // Si no, pon los genéricos de Sabor a Miel.
-    d.font('Helvetica-Bold').fontSize(14).text('Sabor a Miel S.L.', 50, 50);
+    const company = order.user.company;
+    d.font('Helvetica-Bold')
+      .fontSize(14)
+      .text(`${order.user.company.businessName}`, 50, 50);
 
     d.font('Helvetica').fontSize(10);
-    d.text(`NIF: B12345678`, 50, 68);
-    d.text(`Domicilio: C/ Abejas 12, Mijas`, 50, 82);
-    d.text(`Teléfono: 600123456`, 50, 96);
+    d.text(`NIF: ${company.taxId}`, 50, 68);
+    d.text(`Domicilio: ${company.address}`, 50, 82);
+    d.text(`Teléfono: ${company.phone}`, 50, 96);
+    d.text(`IBAN: ${company.bankAccount}`, 50, 110);
 
     d.font('Helvetica-Bold')
       .fontSize(12)

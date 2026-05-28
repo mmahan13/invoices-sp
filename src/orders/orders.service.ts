@@ -206,6 +206,7 @@ export class OrdersService {
         'client',
         'items',
         'items.product', // Anidamos para ver la información del producto dentro de cada línea
+        'user.company',
       ],
     });
 
